@@ -5,7 +5,7 @@ import org.springframework.data.repository.CrudRepository;
 
 /**
  * @author Sdeseure
- * @project cashcard
+ * @project cash card
  * @date 9/05/2025
  */
 

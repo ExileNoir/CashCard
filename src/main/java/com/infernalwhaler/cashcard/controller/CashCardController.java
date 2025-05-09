@@ -27,10 +27,10 @@ public class CashCardController {
     }
 
     /**
-     * @apiNote  @GetMapping marks the method as a handler method.
-     * GET requests that match cashcards/{requestedID} will be handled by this method.
      * @param requestedId @PathVariable makes Spring Web aware of the requestedId supplied in the HTTP request.
-     * */
+     * @apiNote @GetMapping marks the method as a handler method.
+     * GET requests that match cashcards/{requestedID} will be handled by this method.
+     */
     @GetMapping("/{requestedId}")
     private ResponseEntity<CashCard> findById(@PathVariable Long requestedId) {
         final Optional<CashCard> cashCardOptional = cashCardRepository.findById(requestedId);

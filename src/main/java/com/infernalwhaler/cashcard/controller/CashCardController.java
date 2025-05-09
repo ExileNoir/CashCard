@@ -1,11 +1,14 @@
 package com.infernalwhaler.cashcard.controller;
 
 import com.infernalwhaler.cashcard.model.CashCard;
+import com.infernalwhaler.cashcard.repository.CashCardRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Optional;
 
 /**
  * @author Sdeseure
@@ -17,19 +20,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/cashcards")
 public class CashCardController {
 
+    private final CashCardRepository cashCardRepository;
+
+    public CashCardController(CashCardRepository cashCardRepository) {
+        this.cashCardRepository = cashCardRepository;
+    }
 
     /**
-     * @GetMapping marks the method as a handler method.
+     * @apiNote  @GetMapping marks the method as a handler method.
      * GET requests that match cashcards/{requestedID} will be handled by this method.
-     * @PathVariable makes Spring Web aware of the requestedId supplied in the HTTP request.
+     * @param requestedId @PathVariable makes Spring Web aware of the requestedId supplied in the HTTP request.
      * */
     @GetMapping("/{requestedId}")
     private ResponseEntity<CashCard> findById(@PathVariable Long requestedId) {
-        if (requestedId.equals(99L)) {
-            final CashCard cashCard = new CashCard(99L, 123.45);
-            return ResponseEntity.ok(cashCard);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        final Optional<CashCard> cashCardOptional = cashCardRepository.findById(requestedId);
+        return cashCardOptional.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

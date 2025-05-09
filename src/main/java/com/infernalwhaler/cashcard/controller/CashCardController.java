@@ -3,11 +3,10 @@ package com.infernalwhaler.cashcard.controller;
 import com.infernalwhaler.cashcard.model.CashCard;
 import com.infernalwhaler.cashcard.repository.CashCardRepository;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.Optional;
 
 /**
@@ -28,12 +27,28 @@ public class CashCardController {
 
     /**
      * @param requestedId @PathVariable makes Spring Web aware of the requestedId supplied in the HTTP request.
-     * @apiNote @GetMapping marks the method as a handler method.
-     * GET requests that match cashcards/{requestedID} will be handled by this method.
+     *                    GET requests that match cashcards/{requestedID} will be handled by this method.
+     * @apiNote @GetMapping("/{requestedId}") marks the method as a handler method.
      */
     @GetMapping("/{requestedId}")
     private ResponseEntity<CashCard> findById(@PathVariable Long requestedId) {
         final Optional<CashCard> cashCardOptional = cashCardRepository.findById(requestedId);
-        return cashCardOptional.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        return cashCardOptional.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+
+    /**
+     * @param newCashCard          @RequestBody CashCard newCashCard: the POST expects a request "body" that contains the data submitted to the API
+     * @param uriComponentsBuilder uriComponentsBuilder
+     * @implNote URI locationOfNewCashCard.
+     * Is constructing a URI to the newly created CashCard. This is the URI that the caller can then use to GET the newly created CashCard.
+     * @apiNote @PostMapping marks the method as a handler method.
+     */
+    @PostMapping
+    private ResponseEntity<Void> createCashCard(@RequestBody CashCard newCashCard, UriComponentsBuilder uriComponentsBuilder) {
+        final CashCard savedCashCard = cashCardRepository.save(newCashCard);
+        final URI locationOfNewCashCard = uriComponentsBuilder.path("/cashcards/{id}").buildAndExpand(savedCashCard.id()).toUri();
+        return ResponseEntity.created(locationOfNewCashCard).build();
     }
 }

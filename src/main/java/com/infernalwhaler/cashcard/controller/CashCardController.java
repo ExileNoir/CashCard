@@ -45,6 +45,22 @@ public class CashCardController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /**
+     * @param pageable  Since the URI parameters specify page=0&size=1, pageable will contain the values we need.
+     * @param principal holds our user's authenticated, authorized information.
+     * @apiNote PageRequest.of() is a basic Java Bean implementation of Pageable.
+     */
+    @GetMapping
+    private ResponseEntity<List<CashCard>> findAll(Pageable pageable, Principal principal) {
+        final Page<CashCard> page = cashCardRepository.findByOwner(
+                principal.getName(),
+                PageRequest.of(
+                        pageable.getPageNumber(),
+                        pageable.getPageSize(),
+                        pageable.getSortOr(Sort.by(Sort.Direction.ASC, "amount"))
+                ));
+        return ResponseEntity.ok(page.getContent());
+    }
 
     /**
      * @param newCashCardRequest   @RequestBody CashCard newCashCardRequest: the POST expects a request "body" that contains the data submitted to the API
@@ -64,21 +80,22 @@ public class CashCardController {
         return ResponseEntity.created(locationOfNewCashCard).build();
     }
 
-
     /**
-     * @param pageable  Since the URI parameters specify page=0&size=1, pageable will contain the values we need.
-     * @param principal holds our user's authenticated, authorized information.
-     * @apiNote PageRequest.of() is a basic Java Bean implementation of Pageable.
+     * @param requestedId    @PathVariable makes Spring Web aware of the requestedId supplied in the HTTP request.
+     * @param cashCardUpdate @RequestBody CashCard contains the updated CashCard data.
+     * @param principal      holds our user's authenticated, authorized information.
+     * @return an HTTP 204 NO_CONTENT response code
+     * @apiNote @PutMapping("/{requestedId}") supports the PUT verb and supplies the target requestedId.
      */
-    @GetMapping
-    private ResponseEntity<List<CashCard>> findAll(Pageable pageable, Principal principal) {
-        final Page<CashCard> page = cashCardRepository.findByOwner(
-                principal.getName(),
-                PageRequest.of(
-                        pageable.getPageNumber(),
-                        pageable.getPageSize(),
-                        pageable.getSortOr(Sort.by(Sort.Direction.ASC, "amount"))
-                ));
-        return ResponseEntity.ok(page.getContent());
+    @PutMapping("/{requestedId}")
+    private ResponseEntity<Void> updateCashCard(@PathVariable Long requestedId, @RequestBody CashCard cashCardUpdate, Principal principal) {
+        final CashCard cashCard = cashCardRepository.findByIdAndOwner(requestedId, principal.getName());
+        if (cashCard != null) {
+            final CashCard updatedCashCard = new CashCard(cashCard.id(), cashCardUpdate.amount(), principal.getName());
+            cashCardRepository.save(updatedCashCard);
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
     }
+
 }

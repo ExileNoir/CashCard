@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
@@ -42,8 +44,9 @@ class CashCardApplicationTests {
 
         final DocumentContext documentContext = JsonPath.parse(response.getBody());
         final Number id = documentContext.read("$.id");
-        assertThat(id).isEqualTo(99);
         final Double amount = documentContext.read("$.amount");
+
+        assertThat(id).isEqualTo(99);
         assertThat(amount).isEqualTo(123.45);
     }
 
@@ -65,6 +68,7 @@ class CashCardApplicationTests {
     @DirtiesContext
     void shouldCreateAnewCashCard() {
         final CashCard newCashCard = new CashCard(null, 250.00, null);
+
         final ResponseEntity<Void> createResponse = restTemplate
                 .withBasicAuth("Sarah", "abc123")
                 .postForEntity("/cashcards", newCashCard, Void.class);
@@ -100,10 +104,10 @@ class CashCardApplicationTests {
         assertThat(cashCardCount).isEqualTo(3);
 
         final JSONArray ids = documentContext.read("$..id");
-        assertThat(ids).containsExactlyInAnyOrder(99, 100, 101);
-
         final JSONArray amounts = documentContext.read("$..amount");
-        assertThat(amounts).containsExactlyInAnyOrder(123.45, 1.00, 150.00);
+
+        assertThat(ids).containsExactlyInAnyOrder(99, 100, 101);
+        assertThat(amounts).containsExactlyInAnyOrder(19.99, 1.00, 150.00);
     }
 
     @Test
@@ -129,9 +133,9 @@ class CashCardApplicationTests {
 
         final DocumentContext documentContext = JsonPath.parse(response.getBody());
         final JSONArray page = documentContext.read("$[*]");
-        assertThat(page.size()).isEqualTo(1);
-
         final double amount = documentContext.read("$[0].amount");
+
+        assertThat(page.size()).isEqualTo(1);
         assertThat(amount).isEqualTo(150.00);
     }
 
@@ -145,10 +149,10 @@ class CashCardApplicationTests {
 
         final DocumentContext documentContext = JsonPath.parse(response.getBody());
         final JSONArray page = documentContext.read("$[*]");
-        assertThat(page.size()).isEqualTo(3);
-
         final JSONArray amounts = documentContext.read("$..amount");
-        assertThat(amounts).containsExactlyInAnyOrder(1.00, 123.45, 150.00);
+
+        assertThat(page.size()).isEqualTo(3);
+        assertThat(amounts).containsExactlyInAnyOrder(1.00, 19.99, 150.00);
     }
 
     @Test
@@ -181,6 +185,54 @@ class CashCardApplicationTests {
                 .withBasicAuth("Sarah", "abc123")
                 .getForEntity("/cashcards/102", String.class);
 
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void shouldUpdateAnExistingCashCard() {
+        final CashCard cashCardUpdate = new CashCard(null, 19.99, null);
+        final HttpEntity<CashCard> request = new HttpEntity<>(cashCardUpdate);
+
+        final ResponseEntity<Void> response = restTemplate
+                .withBasicAuth("Sarah", "abc123")
+                .exchange("/cashcards/99", HttpMethod.PUT, request, Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        final ResponseEntity<String> getResponse = restTemplate
+                .withBasicAuth("Sarah", "abc123")
+                .getForEntity("/cashcards/99", String.class);
+
+        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        final DocumentContext documentContext = JsonPath.parse(getResponse.getBody());
+        final Number id = documentContext.read("$.id");
+        final Double amount = documentContext.read("$.amount");
+
+        assertThat(id).isEqualTo(99);
+        assertThat(amount).isEqualTo(19.99);
+    }
+
+    @Test
+    void shouldNotUpdateACashCardThatDoesNotExist() {
+        final CashCard unknownCard = new CashCard(null, 19.99, null);
+        final HttpEntity<CashCard> request = new HttpEntity<>(unknownCard);
+
+        final ResponseEntity<Void> response = restTemplate
+                .withBasicAuth("Sarah", "abc123")
+                .exchange("/cashcards/99999", HttpMethod.PUT, request, Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void shouldNotUpdateACashCardThatIsOwnedByAnotherUser() {
+        final CashCard kumarsCard = new CashCard(null, 333.33, null);
+        final HttpEntity<CashCard> request = new HttpEntity<>(kumarsCard);
+
+        final ResponseEntity<Void> response = restTemplate
+                .withBasicAuth("Sarah", "abc123")
+                .exchange("/cashcards/102", HttpMethod.PUT, request, Void.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 }

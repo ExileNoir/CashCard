@@ -8,6 +8,6 @@ import org.springframework.data.annotation.Id;
  * @date 8/05/2025
  */
 
-public record CashCard(@Id Long id, Double amount) {
+public record CashCard(@Id Long id, Double amount, String owner) {
 
 }

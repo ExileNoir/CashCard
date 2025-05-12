@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,38 +34,46 @@ public class CashCardController {
     /**
      * @param requestedId @PathVariable makes Spring Web aware of the requestedId supplied in the HTTP request.
      *                    GET requests that match cashcards/{requestedID} will be handled by this method.
+     * @param principal   holds our user's authenticated, authorized information.
      * @apiNote @GetMapping("/{requestedId}") marks the method as a handler method.
      */
     @GetMapping("/{requestedId}")
-    private ResponseEntity<CashCard> findById(@PathVariable Long requestedId) {
-        final Optional<CashCard> cashCardOptional = cashCardRepository.findById(requestedId);
+    private ResponseEntity<CashCard> findById(@PathVariable Long requestedId, Principal principal) {
+        final Optional<CashCard> cashCardOptional = Optional.ofNullable(
+                cashCardRepository.findByIdAndOwner(requestedId, principal.getName()));
         return cashCardOptional.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
 
     /**
-     * @param newCashCard          @RequestBody CashCard newCashCard: the POST expects a request "body" that contains the data submitted to the API
+     * @param newCashCardRequest   @RequestBody CashCard newCashCardRequest: the POST expects a request "body" that contains the data submitted to the API
      * @param uriComponentsBuilder uriComponentsBuilder
      * @implNote URI locationOfNewCashCard.
      * Is constructing a URI to the newly created CashCard. This is the URI that the caller can then use to GET the newly created CashCard.
      * @apiNote @PostMapping marks the method as a handler method.
      */
     @PostMapping
-    private ResponseEntity<Void> createCashCard(@RequestBody CashCard newCashCard, UriComponentsBuilder uriComponentsBuilder) {
-        final CashCard savedCashCard = cashCardRepository.save(newCashCard);
-        final URI locationOfNewCashCard = uriComponentsBuilder.path("/cashcards/{id}").buildAndExpand(savedCashCard.id()).toUri();
+    private ResponseEntity<Void> createCashCard(@RequestBody CashCard newCashCardRequest, UriComponentsBuilder uriComponentsBuilder, Principal principal) {
+        final CashCard savedCashCard = cashCardRepository.save(
+                new CashCard(null, newCashCardRequest.amount(), principal.getName()));
+        final URI locationOfNewCashCard = uriComponentsBuilder
+                .path("cashcards/{id}")
+                .buildAndExpand(savedCashCard.id())
+                .toUri();
         return ResponseEntity.created(locationOfNewCashCard).build();
     }
 
 
     /**
-     * @param pageable Since the URI parameters specify page=0&size=1, pageable will contain the values we need.
+     * @param pageable  Since the URI parameters specify page=0&size=1, pageable will contain the values we need.
+     * @param principal holds our user's authenticated, authorized information.
      * @apiNote PageRequest.of() is a basic Java Bean implementation of Pageable.
      */
     @GetMapping
-    private ResponseEntity<List<CashCard>> findAll(Pageable pageable) {
-        final Page<CashCard> page = cashCardRepository.findAll(
+    private ResponseEntity<List<CashCard>> findAll(Pageable pageable, Principal principal) {
+        final Page<CashCard> page = cashCardRepository.findByOwner(
+                principal.getName(),
                 PageRequest.of(
                         pageable.getPageNumber(),
                         pageable.getPageSize(),

@@ -13,7 +13,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.net.URI;
 import java.security.Principal;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * @author Sdeseure
@@ -39,10 +38,12 @@ public class CashCardController {
      */
     @GetMapping("/{requestedId}")
     private ResponseEntity<CashCard> findById(@PathVariable Long requestedId, Principal principal) {
-        final Optional<CashCard> cashCardOptional = Optional.ofNullable(
-                cashCardRepository.findByIdAndOwner(requestedId, principal.getName()));
-        return cashCardOptional.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        final CashCard cashCard = cashCardRepository.findByIdAndOwner(requestedId, principal.getName());
+
+        if (!cashCardRepository.existsByIdAndOwner(requestedId, principal.getName())) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(cashCard);
     }
 
     /**
@@ -73,10 +74,12 @@ public class CashCardController {
     private ResponseEntity<Void> createCashCard(@RequestBody CashCard newCashCardRequest, UriComponentsBuilder uriComponentsBuilder, Principal principal) {
         final CashCard savedCashCard = cashCardRepository.save(
                 new CashCard(null, newCashCardRequest.amount(), principal.getName()));
+
         final URI locationOfNewCashCard = uriComponentsBuilder
                 .path("cashcards/{id}")
                 .buildAndExpand(savedCashCard.id())
                 .toUri();
+
         return ResponseEntity.created(locationOfNewCashCard).build();
     }
 
@@ -89,13 +92,26 @@ public class CashCardController {
      */
     @PutMapping("/{requestedId}")
     private ResponseEntity<Void> updateCashCard(@PathVariable Long requestedId, @RequestBody CashCard cashCardUpdate, Principal principal) {
-        final CashCard cashCard = cashCardRepository.findByIdAndOwner(requestedId, principal.getName());
-        if (cashCard != null) {
-            final CashCard updatedCashCard = new CashCard(cashCard.id(), cashCardUpdate.amount(), principal.getName());
-            cashCardRepository.save(updatedCashCard);
-            return ResponseEntity.noContent().build();
+        if (!cashCardRepository.existsByIdAndOwner(requestedId, principal.getName())) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+
+        final CashCard updatedCashCard = new CashCard(requestedId, cashCardUpdate.amount(), principal.getName());
+        cashCardRepository.save(updatedCashCard);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * @apiNote @DeleteMapping("/{id}") supports the DELETE verb and supplies the target id.
+     */
+    @DeleteMapping("/{id}")
+    private ResponseEntity<Void> deleteCashCard(@PathVariable Long id, Principal principal) {
+        if (!cashCardRepository.existsByIdAndOwner(id, principal.getName())) {
+            return ResponseEntity.notFound().build();
+        }
+
+        cashCardRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
 }

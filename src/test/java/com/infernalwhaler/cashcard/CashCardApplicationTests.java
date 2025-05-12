@@ -235,4 +235,49 @@ class CashCardApplicationTests {
                 .exchange("/cashcards/102", HttpMethod.PUT, request, Void.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
+
+    /**
+     *
+     * @apiNote @DirtiesContext to all tests that change the data.
+     * If not, then these tests could affect the result of other tests in the file.
+     * */
+    @Test
+    @DirtiesContext
+    void shouldDeleteAnExistingCashCard() {
+        final ResponseEntity<Void> response = restTemplate
+                .withBasicAuth("Sarah", "abc123")
+                .exchange("/cashcards/99", HttpMethod.DELETE, null, Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        final ResponseEntity<String> getResponse = restTemplate
+                .withBasicAuth("Sarah", "abc123")
+                .getForEntity("/cashcards/99", String.class);
+
+        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void shouldNotDeleteACashCardThatDoesNotExist() {
+        final ResponseEntity<Void> deleteResponse = restTemplate
+                .withBasicAuth("Sarah", "abc123")
+                .exchange("/cashcards/99999", HttpMethod.DELETE, null, Void.class);
+
+        assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void shouldNotAllowDeletionOfCashCardsTheyDoNotOwn() {
+        final ResponseEntity<Void> deleteResponse = restTemplate
+                .withBasicAuth("Sarah", "abc123")
+                .exchange("/cashcards/102", HttpMethod.DELETE, null, Void.class);
+
+        assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+        final ResponseEntity<String> getResponse = restTemplate
+                .withBasicAuth("Kumar", "xyz789")
+                .getForEntity("/cashcards/102", String.class);
+
+        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
 }
